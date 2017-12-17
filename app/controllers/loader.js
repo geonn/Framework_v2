@@ -81,8 +81,9 @@ function next_loading(){
 	var loader = loadingList[counter];
 	counter++;
 	var type = loader.type;
+	console.log(loader.type);
 	if(type == "api"){
-		API.loadAPIBySequence();
+		API.loadAPIBySequence({});
 	}else if(type == "model"){
 		console.log(counter+" "+type);
 		var model = Alloy.createCollection(loader.model);

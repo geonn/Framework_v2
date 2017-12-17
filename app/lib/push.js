@@ -68,7 +68,7 @@ function receivePush(e) {
 				Alloy.Globals.Navigator.open("friends_items", {f_id: e.data.f_id});
 				Alloy.Globals.Navigator.open("conversation", {f_id: e.data.f_id, id: e.data.item_id});
 			}else{
-				Common.createAlert("Notification", "Item pairing is successful.");
+				COMMON.createAlert("Notification", "Item pairing is successful.");
 				Ti.App.fireEvent("friends:refresh");
 				Ti.App.fireEvent("conversation:refresh");
 			}

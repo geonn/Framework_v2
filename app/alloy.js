@@ -13,7 +13,7 @@
 var _ = require('underscore')._;
 var API = require('api');
 var PUSH = require('push'); 
-var Common = require('common'); 
+var COMMON = require('common'); 
 var DBVersionControl = require('DBVersionControl');
 
 DBVersionControl.checkAndUpdate();

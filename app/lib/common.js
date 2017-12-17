@@ -27,15 +27,6 @@ exports.closeWindow = function(win){
 	} 
 };
 
-function removeAllChildren (viewObject){
-    //copy array of child object references because view's "children" property is live collection of child object references
-    var children = viewObject.children.slice(0);
- 
-    for (var i = 0; i < children.length; ++i) {
-        viewObject.remove(children[i]);
-    }
-};
-
 function dialogTextfield(callback){
 	var textfield = Ti.UI.createTextField();
 	var dialog = Ti.UI.createAlertDialog({
@@ -72,7 +63,6 @@ function createAlert(tt,msg, callback){
 
 exports.openWindow = _.throttle(openWindow, 500, true);
 //exports.closeWindow = _.debounce(closeWindow, 0, true);
-exports.removeAllChildren = _.debounce(removeAllChildren, 0, true);
 exports.createAlert = _.throttle(createAlert, 500, true);
 exports.dialogTextfield = _.throttle(dialogTextfield, 500, true);
 
@@ -101,4 +91,18 @@ exports.now = function(){
 	
 	datetime = yyyy+'-'+mm+'-'+dd + " "+ hours+":"+minutes+":"+sec;
 	return datetime ;
+};
+
+exports.sync_time = function(time){ 
+	var a = time.trim();
+	a = a.replace("  ", " ");
+	var b = a.split(" ");
+	var date = b[0].split("-");
+	var time = b[1].split(":"); 
+	var s_date = new Date(date[0], date[1]-1, date[2],time[0],time[1],time[2]);
+	var now = new Date();
+	var s = Date.parse(s_date.toUTCString());
+	var l = Date.parse(now.toUTCString());
+	
+	time_offset = s-l; 
 };

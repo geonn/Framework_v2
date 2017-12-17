@@ -12,8 +12,9 @@ function do_signup(){
 
 function onload(responseText){
 	var result = JSON.parse(responseText); 
+	console.log(result.status);
 	if(result.status == "error"){
-		Common.createAlert("Error", result.data[0]);
+		COMMON.createAlert("Error", result.data[0]);
 		loading.finish();
 		return false;
 	}else{
@@ -40,11 +41,11 @@ function do_login(){
 	var username     = $.username.value;
 	var password	 = $.password.value;
 	if(username ==""){
-		Common.createAlert("Fail","Please fill in your username");
+		COMMON.createAlert("Fail","Please fill in your username");
 		return false;
 	}
 	if(password =="" ){
-		Common.createAlert("Fail","Please fill in your password");
+		COMMON.createAlert("Fail","Please fill in your password");
 		return false;
 	}
 	var device_token = Ti.App.Properties.getString('deviceToken');
@@ -56,7 +57,7 @@ function do_login(){
 	};
 	//API.doLogin(params, $); 
 	loading.start();
-	API.callByPost({url: "doLoginUrl", params: params}, onload);
+	API.callByPost({url: "doLogin", params: params}, {onload: onload});
 }
 
 function init(){

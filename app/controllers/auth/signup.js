@@ -8,14 +8,14 @@ function onload(responseText){
 	var result = JSON.parse(responseText);
 	if(result.status == "error"){
 		loading.finish();
-		Common.createAlert("Error", result.data);
+		COMMON.createAlert("Error", result.data);
 		return false;
 	}else{
 		var userModel = Alloy.createCollection('user'); 
 		var arr = result.data; 
 		userModel.saveArray(arr);
    		loading.finish();
-		Common.createAlert("Notification", "Pando account registration successful");
+		COMMON.createAlert("Notification", "Pando account registration successful");
 		Alloy.Globals.navWin.closeWindow($.signUpWin); 
 	}
 }
@@ -28,31 +28,31 @@ function doRegister(){
 	var password	 = $.password.value;
 	var confirm 	 = $.confirm.value;
 	if(fullname ==""){
-		Common.createAlert("Fail","Please fill in your full name");
+		COMMON.createAlert("Fail","Please fill in your full name");
 		return false;
 	}
 	if(mobile ==""){
-		Common.createAlert("Fail","Please fill in your contact number");
+		COMMON.createAlert("Fail","Please fill in your contact number");
 		return false;
 	}
 	if(email ==""){
-		Common.createAlert("Fail","Please fill in your email address");
+		COMMON.createAlert("Fail","Please fill in your email address");
 		return false;
 	}
 	if(username ==""){
-		Common.createAlert("Fail","Please fill in your username");
+		COMMON.createAlert("Fail","Please fill in your username");
 		return false;
 	}
 	if(password =="" || confirm ==""){
-		Common.createAlert("Fail","Please fill in your password");
+		COMMON.createAlert("Fail","Please fill in your password");
 		return false;
 	}
 	if(password != confirm){
-		Common.createAlert("Fail","Both password must be same");
+		COMMON.createAlert("Fail","Both password must be same");
 		return false;
 	}
 	if(password.length < 6){
-		Common.createAlert("Fail","Password must at least 6 alphanumberic");
+		COMMON.createAlert("Fail","Password must at least 6 alphanumberic");
 		return false;
 	}
 	
@@ -66,7 +66,7 @@ function doRegister(){
 		photoLoad: photoLoad
 	};
 	loading.start();
-	API.callByPostImage({url: "doSignUpUrl", params: params}, onload);
+	API.callByPostImage({url: "doSignUp", params: params}, {onload: onload});
 }
 
 /**

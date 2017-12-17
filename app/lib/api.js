@@ -6,40 +6,108 @@ var API_DOMAIN = "gohr.geonn.com.my";
 var USER  = 'gohr';
 var KEY   = '80175304721014532l49f7207c8943981';
 
-var doLoginUrl = "http://"+API_DOMAIN+"/api/doLogin?user="+USER+"&key="+KEY;
-var updateTokenUrl     = "http://"+API_DOMAIN+"/pando/api/getDeviceInfo?user="+USER+"&key="+KEY;
-
-//API when app loading phase
-var getItemListUrl            = "http://"+API_DOMAIN+"/pando/api/getItemList?user="+USER+"&key="+KEY;
-var getItemResponseByUidUrl = "http://"+API_DOMAIN+"/pando/api/getItemResponseByUid?user="+USER+"&key="+KEY;
-
 //API that call in sequence 
 var APILoadingList = [
-	//{url: getItemListUrl, model: "items", checkId: "1"},
-	//{url: getItemResponseByUidUrl, model: "item_response", checkId: "2"},
+	//{url: "dateNow", type: "api_function", method: "sync_server_time", checkId: "0"},
+	//{url: "getCategoryList", type: "api_model", model: "category", checkId: "5"},
 ];
 
 /*********************
 **** API FUNCTION*****
 **********************/
 
+exports.loadAPIBySequence = function (e){ //counter,
+	var counter = (typeof e.counter == "undefined")?0:e.counter;
+	console.log(counter+" "+APILoadingList.length);
+	if(counter >= APILoadingList.length){
+		Ti.App.fireEvent('app:loadingViewFinish');
+		console.log("fired?");
+		return false;
+	}
+	
+	var api = APILoadingList[counter];
+	var checker = Alloy.createCollection('updateChecker'); 
+	var isUpdate = checker.getCheckerById(api['checkId']);
+	var params ="";
+	
+	if(isUpdate != "" && last_update_on){
+		params = {last_updated: isUpdate.updated};
+	}
+	
+	var url = api['url'];
+	console.log(url);
+	console.log(params.last_updated);
+	API.callByPost({
+		url: url,
+		params: params
+	},{
+		onload: function(responseText){
+			if(api['type'] == "api_function"){
+				eval("_.isFunction("+api['method']+") && "+api['method']+"(responseText)");
+			}else if(api['type'] == "api_model"){
+				var res = JSON.parse(responseText);
+				var arr = res.data; 
+		       	var model = Alloy.createCollection(api['model']);
+		        model.saveArray(arr);
+		        checker.updateModule(APILoadingList[counter]['checkId'],APILoadingList[counter]['model'],currentDateTime());
+			}
+			Ti.App.fireEvent('app:update_loading_text', {text: APILoadingList[counter]['model']+" loading..."});
+			counter++;
+			API.loadAPIBySequence({counter: counter});
+		},
+		onerror: function(err){
+			Ti.App.fireEvent('app:update_loading_text', {text: APILoadingList[counter]['model']+" loading..."});
+			counter++;
+			API.loadAPIBySequence({counter: counter});
+		}
+	});
+};
+
 // call API by post method
-exports.callByPost = function(e, onload, onerror){
+exports.callByPost = function(e, handler){
 	
 	var deviceToken = Ti.App.Properties.getString('deviceToken');
-	if(deviceToken != ""){  
-		var url = eval(e.url);
+	if(deviceToken != ""){ 
+		var url = "http://"+API_DOMAIN+"/api/"+e.url+"?user="+USER+"&key="+KEY;
 		console.log(url);
 		var _result = contactServerByPost(url, e.params || {});   
-		_result.onload = function(e) { 
-			console.log('success callByPost');
+		_result.onload = function(ex) {  
 			console.log(this.responseText);
-			onload && onload(this.responseText); 
+			try{
+				JSON.parse(this.responseText);
+			}
+			catch(e){
+				console.log(this.responseText);
+				console.log('callbypost JSON exception');
+				console.log(e);
+				COMMON.createAlert("Error", e.message, handler.onexception);
+				return;
+			}
+			_.isFunction(handler.onload) && handler.onload(this.responseText); 
 		};
 		
-		_result.onerror = function(ex) { 
-			console.log("onerror "+url);
-			API.callByPost(e, onload, onerror);
+		_result.onerror = function(ex) {
+			//-1001	The request timed out.
+			if(ex.code == "-1009"){		//The Internet connection appears to be offline.
+				COMMON.createAlert("Error", ex.error, handler.onerror);
+				return;
+			}
+			if(_.isNumber(e.retry_times)){
+				console.log(e.retry_times);
+				e.retry_times --;
+				if(e.retry_times > 0){
+					API.callByPost(e, handler);
+				}else{
+					console.log('onerror msg');
+					console.log(ex);
+					COMMON.createAlert("Error", ex.error, handler.onerror);
+				}
+			}else{
+				console.log('onerror msg without no');
+				console.log(ex);
+				e.retry_times = 2;
+				API.callByPost(e, handler);
+			}
 		};
 	}
 };
@@ -84,94 +152,16 @@ exports.updateNotificationToken = function(e){
 	}
 };
 
-// send notification as message to other user
-exports.sendNotification = function(e){
-	var records = {};
-	var u_id = Ti.App.Properties.getString('user_id') || 0;
-	records['message'] = e.message;
-	records['to_id'] = e.to_id;  
-	records['u_id'] = u_id; 
-	var url = sendNotificationUrl+"?message="+e.message+"&to_id="+e.to_id+"&u_id="+u_id+"&target="+e.target;
-	var _result = contactServerByGet(url);   
-	_result.onload = function(e) {
-		console.log(e);
-	};
-	
-	_result.onerror = function(ex) { 
-		console.log(ex);
-	};
-};
-
-exports.loadAPIBySequence = function (ex, counter){ 
-	counter = (typeof counter == "undefined")?0:counter;
-	if(counter >= APILoadingList.length){
-		Ti.App.fireEvent('app:next_loading');
-		return false;
-	}
-	
-	var api = APILoadingList[counter];
-	var model = Alloy.createCollection(api['model']);
-	var checker = Alloy.createCollection('updateChecker'); 
-	
-	var addon_url = "";
-	if(api['model'] == "item_response" || api['model'] == "friends"){
-		var u_id = Ti.App.Properties.getString('user_id') || 0;
-		addon_url = "&u_id="+u_id;
-		var isUpdate = checker.getCheckerById(api['checkId'], u_id);
-		var last_updated = isUpdate.updated || "";
-		if(!u_id){
-			counter++;
-			API.loadAPIBySequence(ex, counter);
-			return;
-		}
-	}else{
-		var isUpdate = checker.getCheckerById(api['checkId']);
-		var last_updated = isUpdate.updated || "";
-	}
-	 var url = api['url']+"&last_updated="+last_updated+addon_url;
-	 console.log(url);
-	 var client = Ti.Network.createHTTPClient({
-	     // function called when the response data is available
-	     onload : function(e) {
-	       console.log('apisequence');
-	       console.log(this.responseText);
-	       var res = JSON.parse(this.responseText);
-	       if(res.status == "Success" || res.status == "success"){
-			/**load new set of category from API**/
-	       	var arr = res.data;
-	        model.saveArray(arr);
-	       }
-			Ti.App.fireEvent('app:update_loading_text', {text: APILoadingList[counter]['model']+" loading..."});
-			if(api['model'] == "item_response" || api['model'] == "friends"){
-				var u_id = Ti.App.Properties.getString('user_id') || 0;
-				checker.updateModule(APILoadingList[counter]['checkId'],APILoadingList[counter]['model'], Common.now(), u_id);
-			}else{
-				checker.updateModule(APILoadingList[counter]['checkId'],APILoadingList[counter]['model'], Common.now());
-			}
-			counter++;
-			API.loadAPIBySequence(ex, counter);
-	     },
-	     // function called when an error occurs, including a timeout
-	     onerror : function(err) {
-	     	console.log("loadAPIBySequence error");
-	     	console.log(err);
-	     	API.loadAPIBySequence(ex, counter);
-	     },
-	     timeout : 7000  // in milliseconds
-	 });
-	 if(Ti.Platform.osname == "android"){
-	 	client.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); 
-	 }
- 
-	 client.open("POST", url);
-	 // Send the request.
-	client.send();
-};
-
-
 /*********************
  * Private function***
  *********************/
+function sync_server_time(responseText){
+	var res = JSON.parse(responseText);
+	if(res.status != "error"){
+		COMMON.sync_time(res.data);
+	}
+}
+
 function contactServerByGet(url) { 
 	var client = Ti.Network.createHTTPClient({
 		timeout : 5000

@@ -20,6 +20,8 @@ function refresh(){
 
 function init(){
 	$.win.add(loading.getView());
+	var AppVersionControl = require('AppVersionControl');
+	//AppVersionControl.checkAndUpdate();
 }
 
 init();
